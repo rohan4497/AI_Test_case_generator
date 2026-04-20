@@ -1,0 +1,9 @@
+name: "Default Functional Test Template"
+category: "Functional"
+depth: "Comprehensive"
+tone: "Professional, structured, clear"
+instructions: >
+  Analyze the provided Jira issue (user story, description, and acceptance criteria).
+  Generate at least 5 structured test cases.
+  Cover positive scenarios (happy path), negative scenarios, and edge cases.
+  Ensure strong coverage of acceptance criteria.
