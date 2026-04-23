@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>QA Buddy — AI Test Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #f0ecff;
+    --bg2: #e8e2ff;
+    --bg3: #ddd5ff;
+    --sidebar: #ffffff;
+    --card: #ffffff;
+    --accent: #7c4dff;
+    --accent2: #b39dff;
+    --accent3: #5e35b1;
+    --text: #1a1040;
+    --text2: #5a4a8a;
+    --text3: #9b8ec4;
+    --border: #d5caff;
+    --success: #00c896;
+    --danger: #ff5252;
+    --warning: #ffab40;
+    --shadow: 0 8px 32px rgba(124,77,255,0.10);
+    --shadow-hover: 0 16px 48px rgba(124,77,255,0.18);
+    --radius: 18px;
+    --radius-sm: 10px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Antigravity floating orbs */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -120px; left: -120px;
+    width: 500px; height: 500px;
+    background: radial-gradient(circle, rgba(180,150,255,0.35) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: float1 8s ease-in-out infinite;
+    pointer-events: none; z-index: 0;
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    bottom: -80px; right: -80px;
+    width: 400px; height: 400px;
+    background: radial-gradient(circle, rgba(124,77,255,0.18) 0%, transparent 70%);
+    border-radius: 50%;
+    animation: float2 10s ease-in-out infinite;
+    pointer-events: none; z-index: 0;
+  }
+
+  @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(40px,30px)} }
+  @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-30px,-40px)} }
+
+  .layout { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+  /* ─── SIDEBAR ─── */
+  .sidebar {
+    width: 220px; min-height: 100vh;
+    background: var(--sidebar);
+    border-right: 1.5px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 28px 0;
+    box-shadow: 4px 0 24px rgba(124,77,255,0.07);
+    position: sticky; top: 0; height: 100vh;
+    overflow-y: auto;
+  }
+
+  .logo-area {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 0 20px 28px;
+    border-bottom: 1.5px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .logo-icon {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--accent), #b39dff);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px;
+    box-shadow: 0 4px 16px rgba(124,77,255,0.3);
+    margin-bottom: 10px;
+    animation: levitate 4s ease-in-out infinite;
+  }
+
+  @keyframes levitate {
+    0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)}
+  }
+
+  .logo-text {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800; font-size: 15px;
+    color: var(--accent3);
+    text-align: center; letter-spacing: -0.3px;
+  }
+  .logo-sub { font-size: 11px; color: var(--text3); margin-top: 2px; }
+
+  .nav-section { padding: 0 12px; margin-bottom: 8px; }
+  .nav-label {
+    font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+    color: var(--text3); text-transform: uppercase;
+    padding: 0 8px; margin-bottom: 6px;
+  }
+
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 11px 14px; border-radius: var(--radius-sm);
+    cursor: pointer; font-size: 13.5px; font-weight: 500;
+    color: var(--text2); transition: all 0.22s cubic-bezier(.4,0,.2,1);
+    margin-bottom: 2px; border: 1.5px solid transparent;
+    position: relative; overflow: hidden;
+  }
+  .nav-item::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(124,77,255,0.08), transparent);
+    opacity: 0; transition: opacity 0.22s;
+  }
+  .nav-item:hover::before { opacity: 1; }
+  .nav-item:hover { color: var(--accent); border-color: var(--border); transform: translateX(3px); }
+  .nav-item.active {
+    background: linear-gradient(135deg, rgba(124,77,255,0.12), rgba(179,157,255,0.08));
+    color: var(--accent); border-color: var(--accent2);
+    font-weight: 600;
+  }
+  .nav-item .nav-icon { font-size: 16px; width: 20px; text-align: center; }
+
+  /* ─── MAIN ─── */
+  .main { flex: 1; padding: 32px 36px; overflow-y: auto; }
+
+  .page { display: none; animation: fadeUp 0.35s ease; }
+  .page.active { display: block; }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .page-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 28px;
+  }
+  .page-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 26px; font-weight: 800; color: var(--text);
+    letter-spacing: -0.5px;
+  }
+  .page-title span { color: var(--accent); }
+  .page-badge {
+    background: linear-gradient(135deg, var(--accent), #b39dff);
+    color: #fff; font-size: 11px; font-weight: 600;
+    padding: 4px 12px; border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  /* ─── CARDS ─── */
+  .card {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    transition: box-shadow 0.22s;
+  }
+  .card:hover { box-shadow: var(--shadow-hover); }
+  .card-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px; font-weight: 700; color: var(--text);
+    margin-bottom: 16px; display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ─── DROPZONE ─── */
+  .dropzone {
+    border: 2.5px dashed var(--accent2);
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(124,77,255,0.04), rgba(179,157,255,0.06));
+    padding: 48px 32px;
+    text-align: center; cursor: pointer;
+    transition: all 0.25s cubic-bezier(.4,0,.2,1);
+    position: relative; overflow: hidden;
+  }
+  .dropzone::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 50% 50%, rgba(124,77,255,0.06), transparent 70%);
+    opacity: 0; transition: opacity 0.25s;
+  }
+  .dropzone:hover, .dropzone.dragover {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, rgba(124,77,255,0.08), rgba(179,157,255,0.12));
+    transform: scale(1.01);
+  }
+  .dropzone:hover::before { opacity: 1; }
+  .dropzone-icon { font-size: 44px; margin-bottom: 12px; animation: levitate 3s ease-in-out infinite; }
+  .dropzone-text { font-size: 15px; font-weight: 500; color: var(--text2); }
+  .dropzone-sub { font-size: 12px; color: var(--text3); margin-top: 6px; }
+  .dropzone input[type=file] { display: none; }
+
+  .file-tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(124,77,255,0.1); border: 1.5px solid var(--accent2);
+    padding: 8px 14px; border-radius: 8px; font-size: 13px;
+    color: var(--accent3); margin-top: 12px; font-weight: 500;
+  }
+
+  /* ─── JIRA INPUT ─── */
+  .input-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
+  .form-group { flex: 1; min-width: 180px; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 6px; display: block; }
+  .form-input {
+    width: 100%; padding: 12px 16px;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    background: var(--bg); color: var(--text);
+    font-family: 'DM Sans', sans-serif; font-size: 14px;
+    transition: all 0.2s; outline: none;
+  }
+  .form-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,77,255,0.12); background: #fff; }
+  .form-input::placeholder { color: var(--text3); }
+
+  /* ─── BUTTONS ─── */
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 12px 22px; border-radius: var(--radius-sm);
+    font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.22s cubic-bezier(.4,0,.2,1);
+    position: relative; overflow: hidden;
+  }
+  .btn::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,0.15);
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .btn:hover::after { opacity: 1; }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent), #9c6fff);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(124,77,255,0.28);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(124,77,255,0.38); }
+
+  .btn-outline {
+    background: transparent; color: var(--accent);
+    border: 1.5px solid var(--accent2);
+  }
+  .btn-outline:hover { background: rgba(124,77,255,0.07); border-color: var(--accent); transform: translateY(-2px); }
+
+  .btn-danger {
+    background: rgba(255,82,82,0.08); color: var(--danger);
+    border: 1.5px solid rgba(255,82,82,0.25);
+  }
+  .btn-danger:hover { background: rgba(255,82,82,0.14); transform: translateY(-2px); }
+
+  .btn-success {
+    background: linear-gradient(135deg, #00c896, #00a878);
+    color: #fff; box-shadow: 0 4px 16px rgba(0,200,150,0.25);
+  }
+  .btn-success:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,200,150,0.35); }
+
+  .btn-sm { padding: 8px 14px; font-size: 12px; }
+
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+
+  /* ─── OUTPUT TABLE ─── */
+  .output-box {
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-top: 20px;
+  }
+  .output-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 20px;
+    background: linear-gradient(135deg, rgba(124,77,255,0.07), rgba(179,157,255,0.05));
+    border-bottom: 1.5px solid var(--border);
+  }
+  .output-title { font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 700; color: var(--text); }
+  .output-count { font-size: 12px; color: var(--text3); }
+
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    background: linear-gradient(135deg, rgba(124,77,255,0.1), rgba(179,157,255,0.06));
+    color: var(--accent3); font-size: 11px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.8px;
+    padding: 12px 16px; text-align: left;
+    border-bottom: 1.5px solid var(--border);
+  }
+  td {
+    padding: 12px 16px; font-size: 13px; color: var(--text);
+    border-bottom: 1px solid var(--bg3); vertical-align: top;
+    line-height: 1.55;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(124,77,255,0.03); }
+
+  .badge {
+    display: inline-block; padding: 3px 9px; border-radius: 20px;
+    font-size: 11px; font-weight: 600;
+  }
+  .badge-high { background: rgba(255,82,82,0.12); color: var(--danger); }
+  .badge-med  { background: rgba(255,171,64,0.12); color: var(--warning); }
+  .badge-low  { background: rgba(0,200,150,0.12); color: var(--success); }
+
+  /* ─── STATUS ─── */
+  .status-bar {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 18px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 500; margin-top: 14px;
+  }
+  .status-bar.success { background: rgba(0,200,150,0.1); color: #00a878; border: 1px solid rgba(0,200,150,0.25); }
+  .status-bar.error   { background: rgba(255,82,82,0.09); color: var(--danger); border: 1px solid rgba(255,82,82,0.2); }
+  .status-bar.info    { background: rgba(124,77,255,0.08); color: var(--accent); border: 1px solid var(--accent2); }
+  .status-bar.loading { background: rgba(124,77,255,0.06); color: var(--text2); border: 1px solid var(--border); }
+
+  /* ─── NOT AVAILABLE ─── */
+  .not-available {
+    text-align: center; padding: 64px 32px;
+    color: var(--text3);
+  }
+  .not-available-icon { font-size: 52px; margin-bottom: 16px; opacity: 0.6; }
+  .not-available h3 { font-family: 'Syne', sans-serif; font-size: 18px; font-weight: 700; color: var(--text2); margin-bottom: 8px; }
+  .not-available p { font-size: 13.5px; line-height: 1.6; }
+
+  /* ─── SETTINGS GRID ─── */
+  .settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media(max-width:800px){ .settings-grid{ grid-template-columns:1fr; } }
+
+  .conn-status {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px; font-weight: 600; padding: 4px 10px;
+    border-radius: 20px;
+  }
+  .conn-status.connected { background: rgba(0,200,150,0.12); color: var(--success); }
+  .conn-status.disconnected { background: rgba(255,82,82,0.1); color: var(--danger); }
+  .conn-dot { width: 7px; height: 7px; border-radius: 50%; }
+  .conn-dot.on { background: var(--success); animation: pulse 1.5s infinite; }
+  .conn-dot.off { background: var(--danger); }
+  @keyframes pulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,200,150,0.4)} 50%{box-shadow:0 0 0 5px rgba(0,200,150,0)} }
+
+  /* ─── LOADER ─── */
+  .loader { display:inline-block; width:18px; height:18px; border:2.5px solid rgba(124,77,255,0.2); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ─── HISTORY TABLE ─── */
+  .history-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px; border-bottom: 1px solid var(--bg3);
+    transition: background 0.15s;
+  }
+  .history-item:last-child { border-bottom: none; }
+  .history-item:hover { background: rgba(124,77,255,0.04); }
+  .history-meta { font-size: 12px; color: var(--text3); margin-top: 3px; }
+
+  /* ─── DASHBOARD STATS ─── */
+  .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .stat-card {
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: var(--radius); padding: 20px;
+    text-align: center; box-shadow: var(--shadow);
+    transition: all 0.22s;
+  }
+  .stat-card:hover { transform: translateY(-3px); box-shadow: var(--shadow-hover); }
+  .stat-icon { font-size: 28px; margin-bottom: 8px; }
+  .stat-num { font-family: 'Syne', sans-serif; font-size: 28px; font-weight: 800; color: var(--accent); }
+  .stat-label { font-size: 12px; color: var(--text3); margin-top: 4px; }
+
+  /* ─── TOAST ─── */
+  .toast {
+    position: fixed; bottom: 28px; right: 28px;
+    background: var(--card); border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm); padding: 14px 20px;
+    font-size: 13.5px; font-weight: 500; color: var(--text);
+    box-shadow: var(--shadow-hover);
+    transform: translateX(120%); transition: transform 0.32s cubic-bezier(.4,0,.2,1);
+    z-index: 999; display: flex; align-items: center; gap: 10px;
+    max-width: 320px;
+  }
+  .toast.show { transform: translateX(0); }
+
+  select.form-input { appearance: none; }
+
+  .divider { border: none; border-top: 1.5px solid var(--border); margin: 20px 0; }
+
+  .tab-row { display: flex; gap: 6px; margin-bottom: 22px; flex-wrap: wrap; }
+  .tab-btn {
+    padding: 9px 18px; border-radius: var(--radius-sm);
+    font-size: 13px; font-weight: 600; cursor: pointer;
+    border: 1.5px solid var(--border); background: var(--card);
+    color: var(--text2); transition: all 0.2s;
+  }
+  .tab-btn.active {
+    background: linear-gradient(135deg, var(--accent), #9c6fff);
+    color: #fff; border-color: transparent;
+    box-shadow: 0 4px 14px rgba(124,77,255,0.25);
+  }
+  .tab-btn:hover:not(.active) { border-color: var(--accent2); color: var(--accent); }
+
+  .plan-section { margin-bottom: 18px; }
+  .plan-section h4 { font-family:'Syne',sans-serif; font-size:14px; font-weight:700; color:var(--accent3); margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border); }
+  .plan-section p, .plan-section li { font-size:13.5px; color:var(--text); line-height:1.65; }
+  .plan-section ul { padding-left: 18px; }
+  .plan-section li { margin-bottom: 4px; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ─── SIDEBAR ─── -->
+  <aside class="sidebar">
+    <div class="logo-area">
+      <div class="logo-icon">🧪</div>
+      <div class="logo-text">QA Buddy</div>
+      <div class="logo-sub">AI Test Generator</div>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-label">Main</div>
+      <div class="nav-item active" onclick="nav('dashboard')">
+        <span class="nav-icon">📊</span> Dashboard
+      </div>
+      <div class="nav-item" onclick="nav('testcases')">
+        <span class="nav-icon">🧬</span> Test Cases
+      </div>
+      <div class="nav-item" onclick="nav('testplan')">
+        <span class="nav-icon">📋</span> Test Planner
+      </div>
+      <div class="nav-item" onclick="nav('history')">
+        <span class="nav-icon">🕐</span> History
+      </div>
+    </div>
+
+    <div class="nav-section" style="margin-top:12px">
+      <div class="nav-label">Integrations</div>
+      <div class="nav-item" onclick="nav('settings-jira')">
+        <span class="nav-icon">🔷</span> JIRA
+      </div>
+      <div class="nav-item" onclick="nav('settings-bugzilla')">
+        <span class="nav-icon">🐛</span> Bugzilla
+      </div>
+      <div class="nav-item" onclick="nav('settings-llm')">
+        <span class="nav-icon">🤖</span> LLM / AI
+      </div>
+    </div>
+
+    <div class="nav-section" style="margin-top:12px">
+      <div class="nav-label">System</div>
+      <div class="nav-item" onclick="nav('view-settings')">
+        <span class="nav-icon">⚙️</span> View Settings
+      </div>
+    </div>
+  </aside>
+
+  <!-- ─── MAIN CONTENT ─── -->
+  <main class="main">
+
+    <!-- ═══ DASHBOARD ═══ -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-header">
+        <div class="page-title">Welcome to <span>QA Buddy</span> 👋</div>
+        <span class="page-badge">v2.0 LIVE</span>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-icon">🧬</div>
+          <div class="stat-num" id="stat-tc">0</div>
+          <div class="stat-label">Test Cases Generated</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📋</div>
+          <div class="stat-num" id="stat-tp">0</div>
+          <div class="stat-label">Test Plans Generated</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">📥</div>
+          <div class="stat-num" id="stat-exp">0</div>
+          <div class="stat-label">CSV Exports</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-icon">🔗</div>
+          <div class="stat-num" id="stat-conn">–</div>
+          <div class="stat-label">Integrations Active</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🚀 Quick Actions</div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="nav('testcases')">🧬 Generate Test Cases</button>
+          <button class="btn btn-outline" onclick="nav('testplan')">📋 Create Test Plan</button>
+          <button class="btn btn-outline" onclick="nav('settings-jira')">🔷 Connect JIRA</button>
+          <button class="btn btn-outline" onclick="nav('settings-llm')">🤖 Configure AI</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📡 Connection Status</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+          <div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">JIRA</div>
+            <span class="conn-status disconnected" id="dash-jira-status"><span class="conn-dot off"></span>Not Connected</span>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">Bugzilla</div>
+            <span class="conn-status disconnected" id="dash-bz-status"><span class="conn-dot off"></span>Not Connected</span>
+          </div>
+          <div>
+            <div style="font-size:12px;color:var(--text3);margin-bottom:4px;">LLM / AI</div>
+            <span class="conn-status disconnected" id="dash-llm-status"><span class="conn-dot off"></span>Not Connected</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">💡 How it works</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;">
+          <div style="text-align:center;padding:16px;">
+            <div style="font-size:32px;margin-bottom:8px;">1️⃣</div>
+            <div style="font-weight:600;font-size:13.5px;color:var(--text);">Connect JIRA or upload a doc</div>
+          </div>
+          <div style="text-align:center;padding:16px;">
+            <div style="font-size:32px;margin-bottom:8px;">2️⃣</div>
+            <div style="font-weight:600;font-size:13.5px;color:var(--text);">AI analyses the ticket / story</div>
+          </div>
+          <div style="text-align:center;padding:16px;">
+            <div style="font-size:32px;margin-bottom:8px;">3️⃣</div>
+            <div style="font-weight:600;font-size:13.5px;color:var(--text);">Get Test Plan + Test Cases</div>
+          </div>
+          <div style="text-align:center;padding:16px;">
+            <div style="font-size:32px;margin-bottom:8px;">4️⃣</div>
+            <div style="font-weight:600;font-size:13.5px;color:var(--text);">Export as CSV instantly</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ TEST CASES ═══ -->
+    <div class="page" id="page-testcases">
+      <div class="page-header">
+        <div class="page-title">🧬 Test <span>Case Generator</span></div>
+        <span class="page-badge">AI Powered</span>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📌 Source — JIRA Ticket ID</div>
+        <div class="input-row">
+          <div class="form-group">
+            <label class="form-label">JIRA Ticket ID</label>
+            <input class="form-input" id="tc-jira-id" placeholder="e.g. PROJ-101, QA-45" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Project Type</label>
+            <select class="form-input" id="tc-project-type">
+              <option>Web Application</option>
+              <option>Mobile App</option>
+              <option>API / Backend</option>
+              <option>Desktop App</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="generateFromJira()" style="margin-top:20px;">
+            🔍 Fetch &amp; Generate
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📂 OR — Upload Document</div>
+        <div class="dropzone" id="tc-dropzone" onclick="document.getElementById('tc-file').click()" ondragover="handleDragOver(event,'tc-dropzone')" ondragleave="handleDragLeave(event,'tc-dropzone')" ondrop="handleDrop(event,'tc-dropzone','tc-file-name')">
+          <div class="dropzone-icon">☁️</div>
+          <div class="dropzone-text">Drag &amp; Drop file here to generate test cases</div>
+          <div class="dropzone-sub">Supports .pdf, .docx, .txt, .csv — max 10MB</div>
+          <input type="file" id="tc-file" accept=".pdf,.docx,.txt,.csv" onchange="fileSelected('tc-file','tc-file-name')"/>
+          <div id="tc-file-name"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-danger btn-sm" onclick="deleteFile('tc-file','tc-file-name')">🗑️ Delete File</button>
+          <button class="btn btn-primary" onclick="generateFromDoc('tc')">⚡ Generate Test Cases</button>
+        </div>
+      </div>
+
+      <div id="tc-status"></div>
+      <div id="tc-output"></div>
+    </div>
+
+    <!-- ═══ TEST PLAN ═══ -->
+    <div class="page" id="page-testplan">
+      <div class="page-header">
+        <div class="page-title">📋 Test <span>Plan Generator</span></div>
+        <span class="page-badge">AI Powered</span>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📌 Source — JIRA Ticket ID</div>
+        <div class="input-row">
+          <div class="form-group">
+            <label class="form-label">JIRA Ticket ID</label>
+            <input class="form-input" id="tp-jira-id" placeholder="e.g. PROJ-101"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Test Environment</label>
+            <select class="form-input" id="tp-env">
+              <option>Staging</option>
+              <option>Production</option>
+              <option>QA</option>
+              <option>Development</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" onclick="generatePlanFromJira()" style="margin-top:20px;">
+            🔍 Fetch &amp; Generate
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📂 OR — Upload Requirement Doc</div>
+        <div class="dropzone" id="tp-dropzone" onclick="document.getElementById('tp-file').click()" ondragover="handleDragOver(event,'tp-dropzone')" ondragleave="handleDragLeave(event,'tp-dropzone')" ondrop="handleDrop(event,'tp-dropzone','tp-file-name')">
+          <div class="dropzone-icon">📄</div>
+          <div class="dropzone-text">Drag &amp; Drop requirement document here</div>
+          <div class="dropzone-sub">Supports .pdf, .docx, .txt — max 10MB</div>
+          <input type="file" id="tp-file" accept=".pdf,.docx,.txt" onchange="fileSelected('tp-file','tp-file-name')"/>
+          <div id="tp-file-name"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-danger btn-sm" onclick="deleteFile('tp-file','tp-file-name')">🗑️ Delete File</button>
+          <button class="btn btn-primary" onclick="generateFromDoc('tp')">📋 Generate Test Plan</button>
+        </div>
+      </div>
+
+      <div id="tp-status"></div>
+      <div id="tp-output"></div>
+    </div>
+
+    <!-- ═══ HISTORY ═══ -->
+    <div class="page" id="page-history">
+      <div class="page-header">
+        <div class="page-title">🕐 <span>History</span></div>
+        <button class="btn btn-outline btn-sm" onclick="clearHistory()">🗑️ Clear All</button>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden;">
+        <div id="history-list">
+          <div class="not-available">
+            <div class="not-available-icon">📭</div>
+            <h3>No history yet</h3>
+            <p>Your generated test cases and test plans<br/>will appear here after generation.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ JIRA SETTINGS ═══ -->
+    <div class="page" id="page-settings-jira">
+      <div class="page-header">
+        <div class="page-title">🔷 JIRA <span>Connection</span></div>
+        <span id="jira-conn-badge" class="conn-status disconnected"><span class="conn-dot off"></span>Not Connected</span>
+      </div>
+      <div class="card">
+        <div class="card-title">🔗 JIRA Cloud / Server Configuration</div>
+        <div class="settings-grid">
+          <div class="form-group">
+            <label class="form-label">JIRA Base URL</label>
+            <input class="form-input" id="jira-url" placeholder="https://yourcompany.atlassian.net"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">JIRA Email</label>
+            <input class="form-input" id="jira-email" type="email" placeholder="you@company.com"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">API Token</label>
+            <input class="form-input" id="jira-token" type="password" placeholder="••••••••••••••••"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Project Key (optional)</label>
+            <input class="form-input" id="jira-project" placeholder="e.g. PROJ, QA, BUG"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Connection Type</label>
+            <select class="form-input" id="jira-type">
+              <option>Jira Cloud</option>
+              <option>Jira Server (On-premise)</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">API Version</label>
+            <select class="form-input" id="jira-api-ver">
+              <option>v3 (recommended)</option>
+              <option>v2</option>
+            </select>
+          </div>
+        </div>
+        <hr class="divider"/>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="testJiraConnection()">🔌 Test Connection</button>
+          <button class="btn btn-success" onclick="saveJiraSettings()">💾 Save Settings</button>
+          <button class="btn btn-outline btn-sm" onclick="clearJiraSettings()">↩️ Reset</button>
+        </div>
+        <div id="jira-test-result"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">ℹ️ How to get your JIRA API Token</div>
+        <div style="font-size:13.5px;color:var(--text2);line-height:1.75;">
+          <ol style="padding-left:20px;">
+            <li>Go to <strong>id.atlassian.com/manage-profile/security/api-tokens</strong></li>
+            <li>Click <strong>"Create API token"</strong></li>
+            <li>Give it a label (e.g. "QA Buddy") and click <strong>Create</strong></li>
+            <li>Copy the token and paste it above — it won't be shown again</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ BUGZILLA SETTINGS ═══ -->
+    <div class="page" id="page-settings-bugzilla">
+      <div class="page-header">
+        <div class="page-title">🐛 Bugzilla <span>Connection</span></div>
+        <span id="bz-conn-badge" class="conn-status disconnected"><span class="conn-dot off"></span>Not Connected</span>
+      </div>
+      <div class="card">
+        <div class="card-title">🔗 Bugzilla Configuration</div>
+        <div class="settings-grid">
+          <div class="form-group">
+            <label class="form-label">Bugzilla Base URL</label>
+            <input class="form-input" id="bz-url" placeholder="https://bugzilla.yourcompany.com"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">API Key</label>
+            <input class="form-input" id="bz-apikey" type="password" placeholder="Your Bugzilla API Key"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Username (optional)</label>
+            <input class="form-input" id="bz-user" placeholder="bugzilla@yourcompany.com"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password (optional)</label>
+            <input class="form-input" id="bz-pass" type="password" placeholder="Only if API key not used"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Default Product</label>
+            <input class="form-input" id="bz-product" placeholder="e.g. Firefox, MyApp"/>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Default Component</label>
+            <input class="form-input" id="bz-component" placeholder="e.g. General, UI, Backend"/>
+          </div>
+        </div>
+        <hr class="divider"/>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="testBzConnection()">🔌 Test Connection</button>
+          <button class="btn btn-success" onclick="saveBzSettings()">💾 Save Settings</button>
+          <button class="btn btn-outline btn-sm" onclick="clearBzSettings()">↩️ Reset</button>
+        </div>
+        <div id="bz-test-result"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">ℹ️ How to get your Bugzilla API Key</div>
+        <div style="font-size:13.5px;color:var(--text2);line-height:1.75;">
+          <ol style="padding-left:20px;">
+            <li>Log into your Bugzilla instance</li>
+            <li>Go to <strong>Preferences → API Keys</strong></li>
+            <li>Click <strong>"Generate a new API key"</strong></li>
+            <li>Enter a description and click <strong>Submit</strong></li>
+            <li>Copy the generated key above</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ LLM SETTINGS ═══ -->
+    <div class="page" id="page-settings-llm">
+      <div class="page-header">
+        <div class="page-title">🤖 AI / LLM <span>Configuration</span></div>
+        <span id="llm-conn-badge" class="conn-status disconnected"><span class="conn-dot off"></span>Not Connected</span>
+      </div>
+      <div class="card">
+        <div class="card-title">🧠 Choose Your AI Model</div>
+        <div class="tab-row" id="llm-tab-row">
+          <button class="tab-btn active" onclick="selectLLM('openai',this)">🟢 OpenAI GPT-4o</button>
+          <button class="tab-btn" onclick="selectLLM('groq',this)">🟠 Groq</button>
+          <button class="tab-btn" onclick="selectLLM('gemini',this)">🔵 Gemini</button>
+          <button class="tab-btn" onclick="selectLLM('anthropic',this)">🟣 Anthropic Claude</button>
+        </div>
+
+        <div id="llm-openai" class="llm-panel">
+          <div class="settings-grid">
+            <div class="form-group">
+              <label class="form-label">OpenAI API Key</label>
+              <input class="form-input" id="openai-key" type="password" placeholder="sk-••••••••••••••••"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Model</label>
+              <select class="form-input" id="openai-model">
+                <option>gpt-4o (recommended)</option>
+                <option>gpt-4-turbo</option>
+                <option>gpt-4</option>
+                <option>gpt-3.5-turbo</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Tokens</label>
+              <input class="form-input" id="openai-tokens" type="number" placeholder="4096" value="4096"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Temperature</label>
+              <input class="form-input" id="openai-temp" type="number" step="0.1" min="0" max="1" placeholder="0.3" value="0.3"/>
+            </div>
+          </div>
+        </div>
+
+        <div id="llm-groq" class="llm-panel" style="display:none;">
+          <div class="settings-grid">
+            <div class="form-group">
+              <label class="form-label">Groq API Key</label>
+              <input class="form-input" id="groq-key" type="password" placeholder="gsk_••••••••••••••••"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Model</label>
+              <select class="form-input" id="groq-model">
+                <option>llama3-70b-8192 (recommended)</option>
+                <option>llama3-8b-8192</option>
+                <option>mixtral-8x7b-32768</option>
+                <option>gemma2-9b-it</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Tokens</label>
+              <input class="form-input" id="groq-tokens" type="number" placeholder="8192" value="8192"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Temperature</label>
+              <input class="form-input" id="groq-temp" type="number" step="0.1" min="0" max="1" placeholder="0.3" value="0.3"/>
+            </div>
+          </div>
+        </div>
+
+        <div id="llm-gemini" class="llm-panel" style="display:none;">
+          <div class="settings-grid">
+            <div class="form-group">
+              <label class="form-label">Google AI API Key</label>
+              <input class="form-input" id="gemini-key" type="password" placeholder="AIza••••••••••••••••"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Model</label>
+              <select class="form-input" id="gemini-model">
+                <option>gemini-1.5-pro (recommended)</option>
+                <option>gemini-1.5-flash</option>
+                <option>gemini-pro</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Output Tokens</label>
+              <input class="form-input" id="gemini-tokens" type="number" placeholder="8192" value="8192"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Temperature</label>
+              <input class="form-input" id="gemini-temp" type="number" step="0.1" min="0" max="1" placeholder="0.3" value="0.3"/>
+            </div>
+          </div>
+        </div>
+
+        <div id="llm-anthropic" class="llm-panel" style="display:none;">
+          <div class="settings-grid">
+            <div class="form-group">
+              <label class="form-label">Anthropic API Key</label>
+              <input class="form-input" id="anthropic-key" type="password" placeholder="sk-ant-••••••••••••••••"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Model</label>
+              <select class="form-input" id="anthropic-model">
+                <option>claude-sonnet-4-20250514 (recommended)</option>
+                <option>claude-opus-4-20250514</option>
+                <option>claude-haiku-4-5-20251001</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Max Tokens</label>
+              <input class="form-input" id="anthropic-tokens" type="number" placeholder="4096" value="4096"/>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Temperature</label>
+              <input class="form-input" id="anthropic-temp" type="number" step="0.1" min="0" max="1" placeholder="0.3" value="0.3"/>
+            </div>
+          </div>
+        </div>
+
+        <hr class="divider"/>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="testLLMConnection()">🔌 Test LLM Connection</button>
+          <button class="btn btn-success" onclick="saveLLMSettings()">💾 Save Settings</button>
+          <button class="btn btn-outline btn-sm" onclick="clearLLMSettings()">↩️ Reset</button>
+        </div>
+        <div id="llm-test-result"></div>
+      </div>
+    </div>
+
+    <!-- ═══ VIEW SETTINGS ═══ -->
+    <div class="page" id="page-view-settings">
+      <div class="page-header">
+        <div class="page-title">⚙️ View <span>Settings</span></div>
+      </div>
+      <div class="not-available">
+        <div class="not-available-icon">🚧</div>
+        <h3>Currently Not Available</h3>
+        <p>View customisation settings are coming in the next release.<br/>Stay tuned for themes, layout options, and display preferences.</p>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ─── TOAST ─── -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── STATE ───
+const state = {
+  jiraConnected: false,
+  bzConnected: false,
+  llmConnected: false,
+  activeLLM: 'openai',
+  history: [],
+  stats: { tc: 0, tp: 0, exp: 0 },
+};
+
+// ─── NAVIGATION ───
+function nav(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  const target = document.getElementById('page-' + page);
+  if(target) target.classList.add('active');
+  // highlight sidebar
+  document.querySelectorAll('.nav-item').forEach(n => {
+    if(n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + page + "'")) {
+      n.classList.add('active');
+    }
+  });
+}
+
+// ─── TOAST ───
+function showToast(msg, type='info') {
+  const icons = { success:'✅', error:'❌', info:'💡', warning:'⚠️' };
+  const t = document.getElementById('toast');
+  t.innerHTML = icons[type] + ' ' + msg;
+  t.className = 'toast show';
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// ─── DROPZONE ───
+function handleDragOver(e, id) {
+  e.preventDefault();
+  document.getElementById(id).classList.add('dragover');
+}
+function handleDragLeave(e, id) {
+  document.getElementById(id).classList.remove('dragover');
+}
+function handleDrop(e, id, nameId) {
+  e.preventDefault();
+  document.getElementById(id).classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file) showFileName(file.name, nameId);
+}
+function fileSelected(inputId, nameId) {
+  const f = document.getElementById(inputId).files[0];
+  if(f) showFileName(f.name, nameId);
+}
+function showFileName(name, nameId) {
+  document.getElementById(nameId).innerHTML =
+    `<div class="file-tag">📎 ${name}</div>`;
+  showToast('File loaded: ' + name, 'success');
+}
+function deleteFile(inputId, nameId) {
+  document.getElementById(inputId).value = '';
+  document.getElementById(nameId).innerHTML = '';
+  showToast('File removed', 'info');
+}
+
+// ─── STATUS HELPERS ───
+function setStatus(id, msg, type='info') {
+  const icons = { success:'✅', error:'❌', info:'⏳', loading:'⏳' };
+  const loaderHtml = type === 'loading' ? '<span class="loader"></span>' : '';
+  document.getElementById(id).innerHTML =
+    `<div class="status-bar ${type}">${loaderHtml} ${msg}</div>`;
+}
+function clearStatus(id) { document.getElementById(id).innerHTML = ''; }
+
+// ─── MOCK TEST CASE GENERATOR ───
+function generateFromJira() {
+  const id = document.getElementById('tc-jira-id').value.trim();
+  if(!id) { showToast('Please enter a JIRA Ticket ID', 'warning'); return; }
+  runGenerate('tc', id, 'JIRA Ticket');
+}
+function generateFromDoc(prefix) {
+  const fName = document.getElementById(prefix + '-file-name').innerHTML;
+  if(!fName) { showToast('Please upload a document first', 'warning'); return; }
+  runGenerate(prefix, 'DOC-' + Math.floor(Math.random()*9000+1000), 'Document');
+}
+function generatePlanFromJira() {
+  const id = document.getElementById('tp-jira-id').value.trim();
+  if(!id) { showToast('Please enter a JIRA Ticket ID', 'warning'); return; }
+  runGenerate('tp', id, 'JIRA Ticket');
+}
+
+function runGenerate(prefix, sourceId, sourceType) {
+  setStatus(prefix + '-status', 'AI is analysing ' + sourceId + '…', 'loading');
+  document.getElementById(prefix + '-output').innerHTML = '';
+  setTimeout(() => {
+    setStatus(prefix + '-status', 'Generation complete! ' + (prefix==='tc'?'10 test cases':'Test plan') + ' ready.', 'success');
+    if(prefix === 'tc') renderTestCases(sourceId);
+    else renderTestPlan(sourceId);
+    addHistory(prefix, sourceId, sourceType);
+    state.stats[prefix==='tc'?'tc':'tp']++;
+    updateStats();
+  }, 2000);
+}
+
+// ─── TEST CASES TABLE ───
+function renderTestCases(jiraId) {
+  const cases = [
+    ['TC-001','Verify login with valid credentials','High','Enter valid email & password → Click Login','User is logged in and redirected to dashboard'],
+    ['TC-002','Verify login with invalid password','High','Enter valid email + wrong password → Click Login','Error: "Invalid credentials" shown'],
+    ['TC-003','Verify login with empty fields','Medium','Leave email & password blank → Click Login','Validation error: "Fields required"'],
+    ['TC-004','Verify forgot password flow','Medium','Click Forgot Password → Enter email → Submit','Password reset email sent successfully'],
+    ['TC-005','Verify session timeout after inactivity','High','Log in → Stay idle 30 min','Session expires; user redirected to login'],
+    ['TC-006','Verify remember me checkbox','Low','Check Remember Me → Login → Close browser → Reopen','User is still logged in'],
+    ['TC-007','Verify XSS in username field','High','Enter <script>alert(1)</script> as username','Input sanitized; no alert executed'],
+    ['TC-008','Verify SQL injection in password field','High','Enter \' OR 1=1 -- as password','Login rejected; no DB error exposed'],
+    ['TC-009','Verify concurrent sessions','Medium','Login on two browsers simultaneously','Both sessions allowed OR second session blocked per policy'],
+    ['TC-010','Verify UI on mobile viewport','Low','Open login page on 375px viewport','All elements visible, no overflow, touch-friendly'],
+  ];
+
+  let rows = cases.map(([id,name,pri,steps,exp]) =>
+    `<tr>
+      <td><strong style="color:var(--accent)">${id}</strong></td>
+      <td>${name}</td>
+      <td><span class="badge badge-${pri==='High'?'high':pri==='Medium'?'med':'low'}">${pri}</span></td>
+      <td style="font-size:12px;">${steps}</td>
+      <td style="font-size:12px;color:var(--success);">${exp}</td>
+      <td><span class="badge" style="background:rgba(124,77,255,0.1);color:var(--accent)">Pending</span></td>
+    </tr>`
+  ).join('');
+
+  document.getElementById('tc-output').innerHTML = `
+    <div class="output-box">
+      <div class="output-header">
+        <div class="output-title">🧬 Test Cases — ${jiraId}</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span class="output-count">10 cases generated</span>
+          <button class="btn btn-success btn-sm" onclick="exportCSV('tc','${jiraId}')">⬇️ Export CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>TC ID</th><th>Test Case Name</th><th>Priority</th><th>Steps</th><th>Expected Result</th><th>Status</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+    </div>`;
+}
+
+// ─── TEST PLAN ───
+function renderTestPlan(jiraId) {
+  document.getElementById('tp-output').innerHTML = `
+    <div class="output-box">
+      <div class="output-header">
+        <div class="output-title">📋 Test Plan — ${jiraId}</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-success btn-sm" onclick="exportCSV('tp','${jiraId}')">⬇️ Export CSV</button>
+        </div>
+      </div>
+      <div style="padding:24px;">
+        <div class="plan-section">
+          <h4>🎯 Objective</h4>
+          <p>To verify that the feature described in ${jiraId} functions correctly across all supported platforms, browsers, and user roles — covering positive, negative, and edge-case scenarios.</p>
+        </div>
+        <div class="plan-section">
+          <h4>✅ In Scope</h4>
+          <ul>
+            <li>Functional testing of all UI components related to the ticket</li>
+            <li>API endpoint validation for affected services</li>
+            <li>Cross-browser testing (Chrome, Firefox, Safari, Edge)</li>
+            <li>Regression on dependent modules</li>
+            <li>Security validation (XSS, SQLi on input fields)</li>
+          </ul>
+        </div>
+        <div class="plan-section">
+          <h4>❌ Out of Scope</h4>
+          <ul>
+            <li>Performance / load testing</li>
+            <li>Infrastructure / DevOps testing</li>
+            <li>Third-party integrations not directly affected</li>
+          </ul>
+        </div>
+        <div class="plan-section">
+          <h4>🖥️ Test Environment</h4>
+          <ul>
+            <li>Environment: <strong>Staging</strong></li>
+            <li>OS: Windows 11, macOS Sonoma, Ubuntu 22.04</li>
+            <li>Browsers: Chrome 124+, Firefox 125+, Safari 17+</li>
+            <li>Devices: Desktop, Tablet, Mobile (iOS 17, Android 14)</li>
+          </ul>
+        </div>
+        <div class="plan-section">
+          <h4>📐 Test Approach</h4>
+          <p>Manual testing for UI/UX flows. Automated regression via existing test suite. API testing via Postman. AI-generated test cases reviewed and executed by QA team.</p>
+        </div>
+        <div class="plan-section">
+          <h4>⚠️ Risks & Mitigations</h4>
+          <ul>
+            <li><strong>Risk:</strong> Incomplete ticket requirements → <strong>Mitigation:</strong> QA sync with dev before execution</li>
+            <li><strong>Risk:</strong> Environment instability → <strong>Mitigation:</strong> Daily smoke tests on staging</li>
+          </ul>
+        </div>
+        <div class="plan-section">
+          <h4>✔️ Entry / Exit Criteria</h4>
+          <ul>
+            <li><strong>Entry:</strong> Build deployed to staging; no P0 blocker bugs open</li>
+            <li><strong>Exit:</strong> All High priority TCs passed; zero open Sev-1 bugs</li>
+          </ul>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ─── CSV EXPORT ───
+function exportCSV(type, id) {
+  let csv, filename;
+  if(type === 'tc') {
+    csv = 'TC ID,Test Case Name,Priority,Steps,Expected Result,Status\n';
+    csv += 'TC-001,Verify login with valid credentials,High,"Enter valid email & password → Click Login",User logged in and redirected,Pending\n';
+    csv += 'TC-002,Verify login with invalid password,High,"Enter valid email + wrong password → Click Login",Error: Invalid credentials shown,Pending\n';
+    csv += 'TC-003,Verify login with empty fields,Medium,Leave fields blank → Click Login,Validation error shown,Pending\n';
+    csv += 'TC-004,Verify forgot password flow,Medium,Click Forgot Password → Enter email,Reset email sent,Pending\n';
+    csv += 'TC-005,Verify session timeout,High,Log in → Stay idle 30 min,Session expires,Pending\n';
+    csv += 'TC-006,Verify remember me,Low,Check Remember Me → Login → Reopen,User still logged in,Pending\n';
+    csv += 'TC-007,Verify XSS in username,High,Enter script tag as username,Input sanitized,Pending\n';
+    csv += 'TC-008,Verify SQL injection,High,Enter OR 1=1 in password,Login rejected,Pending\n';
+    csv += 'TC-009,Verify concurrent sessions,Medium,Login on two browsers,Both or second blocked,Pending\n';
+    csv += 'TC-010,Verify mobile UI,Low,Open on 375px viewport,All elements visible,Pending\n';
+    filename = 'TestCases_' + id + '.csv';
+  } else {
+    csv = 'Section,Content\n';
+    csv += 'Objective,Verify feature in ' + id + ' across all platforms\n';
+    csv += 'In Scope,Functional testing; API validation; Cross-browser; Regression; Security\n';
+    csv += 'Out of Scope,Performance testing; Infrastructure; Third-party integrations\n';
+    csv += 'Environment,Staging — Chrome/Firefox/Safari — Windows/macOS/iOS/Android\n';
+    csv += 'Approach,Manual + Automated regression + API testing via Postman\n';
+    filename = 'TestPlan_' + id + '.csv';
+  }
+
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  state.stats.exp++;
+  updateStats();
+  showToast('CSV exported: ' + filename, 'success');
+}
+
+// ─── HISTORY ───
+function addHistory(type, id, source) {
+  const item = { type, id, source, time: new Date().toLocaleString() };
+  state.history.unshift(item);
+  renderHistory();
+}
+
+function renderHistory() {
+  const el = document.getElementById('history-list');
+  if(!state.history.length) {
+    el.innerHTML = '<div class="not-available"><div class="not-available-icon">📭</div><h3>No history yet</h3><p>Generated items will appear here.</p></div>';
+    return;
+  }
+  el.innerHTML = state.history.map((h,i) =>
+    `<div class="history-item">
+      <div>
+        <div style="font-size:13.5px;font-weight:600;">${h.type==='tc'?'🧬 Test Cases':'📋 Test Plan'} — ${h.id}</div>
+        <div class="history-meta">Source: ${h.source} &nbsp;|&nbsp; ${h.time}</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-outline btn-sm" onclick="exportCSV('${h.type}','${h.id}')">⬇️ CSV</button>
+      </div>
+    </div>`
+  ).join('');
+}
+
+function clearHistory() {
+  state.history = [];
+  renderHistory();
+  showToast('History cleared', 'info');
+}
+
+// ─── STATS ───
+function updateStats() {
+  document.getElementById('stat-tc').textContent = state.stats.tc * 10;
+  document.getElementById('stat-tp').textContent = state.stats.tp;
+  document.getElementById('stat-exp').textContent = state.stats.exp;
+  const conn = (state.jiraConnected?1:0) + (state.bzConnected?1:0) + (state.llmConnected?1:0);
+  document.getElementById('stat-conn').textContent = conn + '/3';
+}
+
+// ─── JIRA ───
+function testJiraConnection() {
+  const url = document.getElementById('jira-url').value.trim();
+  const email = document.getElementById('jira-email').value.trim();
+  const token = document.getElementById('jira-token').value.trim();
+  if(!url||!email||!token) { showToast('Please fill in all JIRA fields', 'warning'); return; }
+  setStatus('jira-test-result', 'Testing JIRA connection…', 'loading');
+  setTimeout(() => {
+    state.jiraConnected = true;
+    updateConnBadge('jira');
+    setStatus('jira-test-result', 'JIRA connected successfully! Found 3 projects.', 'success');
+    showToast('JIRA connected!', 'success');
+  }, 1800);
+}
+function saveJiraSettings() {
+  showToast('JIRA settings saved', 'success');
+}
+function clearJiraSettings() {
+  ['jira-url','jira-email','jira-token','jira-project'].forEach(id => document.getElementById(id).value = '');
+  state.jiraConnected = false;
+  updateConnBadge('jira');
+  clearStatus('jira-test-result');
+  showToast('JIRA settings cleared', 'info');
+}
+
+// ─── BUGZILLA ───
+function testBzConnection() {
+  const url = document.getElementById('bz-url').value.trim();
+  const key = document.getElementById('bz-apikey').value.trim();
+  if(!url||!key) { showToast('Please fill JIRA URL and API Key', 'warning'); return; }
+  setStatus('bz-test-result', 'Testing Bugzilla connection…', 'loading');
+  setTimeout(() => {
+    state.bzConnected = true;
+    updateConnBadge('bz');
+    setStatus('bz-test-result', 'Bugzilla connected successfully!', 'success');
+    showToast('Bugzilla connected!', 'success');
+  }, 1800);
+}
+function saveBzSettings() { showToast('Bugzilla settings saved', 'success'); }
+function clearBzSettings() {
+  ['bz-url','bz-apikey','bz-user','bz-pass','bz-product','bz-component'].forEach(id => document.getElementById(id).value = '');
+  state.bzConnected = false;
+  updateConnBadge('bz');
+  clearStatus('bz-test-result');
+  showToast('Bugzilla settings cleared', 'info');
+}
+
+// ─── LLM ───
+function selectLLM(name, btn) {
+  state.activeLLM = name;
+  document.querySelectorAll('.llm-panel').forEach(p => p.style.display = 'none');
+  document.getElementById('llm-' + name).style.display = 'block';
+  document.querySelectorAll('#llm-tab-row .tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+function testLLMConnection() {
+  const keyMap = { openai:'openai-key', groq:'groq-key', gemini:'gemini-key', anthropic:'anthropic-key' };
+  const key = document.getElementById(keyMap[state.activeLLM]).value.trim();
+  if(!key) { showToast('Please enter an API key', 'warning'); return; }
+  setStatus('llm-test-result', 'Testing LLM connection…', 'loading');
+  setTimeout(() => {
+    state.llmConnected = true;
+    updateConnBadge('llm');
+    setStatus('llm-test-result', 'LLM connected! Model responding correctly.', 'success');
+    showToast('AI connected!', 'success');
+  }, 1600);
+}
+function saveLLMSettings() { showToast('LLM settings saved', 'success'); }
+function clearLLMSettings() {
+  ['openai-key','groq-key','gemini-key','anthropic-key'].forEach(id => document.getElementById(id).value = '');
+  state.llmConnected = false;
+  updateConnBadge('llm');
+  clearStatus('llm-test-result');
+  showToast('LLM settings cleared', 'info');
+}
+
+// ─── CONN BADGES ───
+function updateConnBadge(type) {
+  const connected = state[type === 'bz' ? 'bzConnected' : type + 'Connected'];
+  const badge = document.getElementById(type === 'bz' ? 'bz-conn-badge' : type + '-conn-badge');
+  const dash = document.getElementById('dash-' + type + '-status');
+  const html = connected
+    ? '<span class="conn-dot on"></span>Connected'
+    : '<span class="conn-dot off"></span>Not Connected';
+  const cls = 'conn-status ' + (connected ? 'connected' : 'disconnected');
+  if(badge) { badge.innerHTML = html; badge.className = cls; }
+  if(dash)  { dash.innerHTML  = html; dash.className  = cls; }
+  updateStats();
+}
+</script>
+</body>
+</html>

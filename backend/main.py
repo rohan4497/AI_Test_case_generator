@@ -227,6 +227,72 @@ Generate the test cases now. Return solely the JSON.
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"LLM Error: {str(e)}")
 
+class TestPlanGenerateRequest(BaseModel):
+    anthropic_api_key: Optional[str] = None
+    jira_id: str
+    summary: str
+    description: str
+    acceptance_criteria: str
+    issue_type: str
+    priority: str
+    template_content: str
+
+@app.post("/api/testplan/generate")
+async def generate_testplan(data: TestPlanGenerateRequest):
+    api_key = data.anthropic_api_key or os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=400, detail="Anthropic API Key is required.")
+    
+    client = anthropic.AsyncAnthropic(api_key=api_key)
+    
+    system_prompt = f"""You are a professional QA Manager. Your task is to generate a comprehensive Test Plan based on the provided user story and template.
+You must return ONLY the markdown string. Do NOT wrap it in a JSON object. Ensure the format strictly follows the provided template."""
+
+    user_prompt = f"""
+Jira ID: {data.jira_id}
+Type: {data.issue_type}
+Priority: {data.priority}
+Summary: {data.summary}
+
+Description:
+{data.description}
+
+Acceptance Criteria:
+{data.acceptance_criteria}
+
+Template/Instructions:
+{data.template_content}
+
+Generate the test plan now. Return exactly the markdown content.
+"""
+    
+    start_time = time.time()
+    try:
+        response = await client.messages.create(
+            model="claude-3-5-sonnet-latest",
+            max_tokens=3000,
+            system=system_prompt,
+            messages=[{"role": "user", "content": user_prompt}]
+        )
+        latency = time.time() - start_time
+        tokens_used = response.usage.input_tokens + response.usage.output_tokens
+        
+        raw_text = response.content[0].text.strip()
+        if raw_text.startswith("```markdown"):
+            raw_text = raw_text[11:-3]
+        elif raw_text.startswith("```"):
+            raw_text = raw_text[3:-3]
+            
+        return {
+            "test_plan": raw_text.strip(),
+            "metadata": {
+                "latency_sec": round(latency, 2),
+                "tokens_used": tokens_used
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"LLM Error: {str(e)}")
+
 @app.post("/api/testcases/export")
 async def export_testcases(data: ExportRequest):
     if data.format == "csv":
