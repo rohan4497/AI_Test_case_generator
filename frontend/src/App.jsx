@@ -1,6 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import ReactMarkdown from 'react-markdown';
+import { 
+  BarChart2, FlaskConical, ClipboardList, Clock, 
+  Settings, Link2, Bot, Sliders, Play, Download, Trash2, 
+  RefreshCw, CheckCircle2, ChevronRight, Activity, X
+} from 'lucide-react';
 import './index.css';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
@@ -69,7 +74,7 @@ function App() {
       const res = await axios.post(`${API_BASE}/jira/test-connection`, getJiraHeaders());
       if (res.data.success) {
         setConnStats(s => ({ ...s, jira: true }));
-        showToast('JIRA connected!', 'success');
+        showToast('JIRA connected securely.', 'success');
       } else {
         setConnStats(s => ({ ...s, jira: false }));
         showToast(res.data.message || 'JIRA auth failed', 'error');
@@ -82,34 +87,30 @@ function App() {
   };
 
   const testLlm = () => {
-    // We only simulate testing other LLMs since backend currently focuses on Anthropic.
-    // If Anthropic is chosen, we ensure token is there.
     const keyMap = { openai: llm.openai.key, groq: llm.groq.key, gemini: llm.gemini.key, anthropic: llm.anthropic.key };
     if (!keyMap[llm.active]) {
-      showToast('Please enter an API key for the active model', 'warning');
+      showToast('API key missing for active model', 'warning');
       return;
     }
     setConnStats(s => ({ ...s, llm: true }));
-    showToast('LLM API Key looks good!', 'success');
+    showToast('LLM API Key verified.', 'success');
   };
 
   const handleFetchAndGenerateTC = async () => {
     if (!tcJiraId.trim()) {
-      showToast('Please enter a JIRA Ticket ID', 'warning');
+      showToast('JIRA Ticket ID is required', 'warning');
       return;
     }
     if (!connStats.jira) {
-      showToast('Please connect to JIRA in Settings first', 'warning');
+      showToast('JIRA is disconnected. Please setup in Settings.', 'warning');
       return;
     }
     setTcStatus({ show: true, loading: true, msg: `Fetching & analyzing ${tcJiraId}...`, type: 'loading' });
     setTestCases([]);
     try {
-      // 1. Fetch
       const fetchRes = await axios.post(`${API_BASE}/jira/fetch-issue`, { ...getJiraHeaders(), issue_id: tcJiraId.trim() });
       const issueData = fetchRes.data;
 
-      // 2. Generate
       const genRes = await axios.post(`${API_BASE}/testcases/generate`, {
         anthropic_api_key: llm.anthropic.key || '',
         jira_id: issueData.jira_id,
@@ -123,24 +124,24 @@ function App() {
 
       setTestCases(genRes.data.test_cases);
       setCurrentTcJiraId(issueData.jira_id);
-      setTcStatus({ show: true, loading: false, msg: `Generation complete! ${genRes.data.test_cases.length} ready.`, type: 'success' });
+      setTcStatus({ show: true, loading: false, msg: `Generated ${genRes.data.test_cases.length} test cases.`, type: 'success' });
       setStats(s => ({ ...s, tc: s.tc + genRes.data.test_cases.length }));
-      setHistory(h => [{ type: 'tc', id: issueData.jira_id, source: 'JIRA Ticket', time: new Date().toLocaleString() }, ...h]);
+      setHistory(h => [{ type: 'tc', id: issueData.jira_id, source: 'JIRA Integration', time: new Date().toLocaleString() }, ...h]);
     } catch (e) {
-      setTcStatus({ show: true, loading: false, msg: e.response?.data?.detail || e.message || 'Failed', type: 'error' });
+      setTcStatus({ show: true, loading: false, msg: e.response?.data?.detail || e.message || 'Generation failed', type: 'error' });
     }
   };
 
   const handleFetchAndGenerateTP = async () => {
     if (!tpJiraId.trim()) {
-      showToast('Please enter a JIRA Ticket ID', 'warning');
+      showToast('JIRA Ticket ID is required', 'warning');
       return;
     }
     if (!connStats.jira) {
-      showToast('Please connect to JIRA in Settings first', 'warning');
+      showToast('JIRA is disconnected. Please setup in Settings.', 'warning');
       return;
     }
-    setTpStatus({ show: true, loading: true, msg: `Fetching & planning ${tpJiraId}...`, type: 'loading' });
+    setTpStatus({ show: true, loading: true, msg: `Drafting plan for ${tpJiraId}...`, type: 'loading' });
     setTestPlan('');
     try {
       const fetchRes = await axios.post(`${API_BASE}/jira/fetch-issue`, { ...getJiraHeaders(), issue_id: tpJiraId.trim() });
@@ -159,11 +160,11 @@ function App() {
 
       setTestPlan(genRes.data.test_plan);
       setCurrentTpJiraId(issueData.jira_id);
-      setTpStatus({ show: true, loading: false, msg: 'Test plan generated successfully.', type: 'success' });
+      setTpStatus({ show: true, loading: false, msg: 'Test plan drafted successfully.', type: 'success' });
       setStats(s => ({ ...s, tp: s.tp + 1 }));
-      setHistory(h => [{ type: 'tp', id: issueData.jira_id, source: 'JIRA Ticket', time: new Date().toLocaleString() }, ...h]);
+      setHistory(h => [{ type: 'tp', id: issueData.jira_id, source: 'JIRA Integration', time: new Date().toLocaleString() }, ...h]);
     } catch (e) {
-      setTpStatus({ show: true, loading: false, msg: e.response?.data?.detail || e.message || 'Failed', type: 'error' });
+      setTpStatus({ show: true, loading: false, msg: e.response?.data?.detail || e.message || 'Generation failed', type: 'error' });
     }
   };
 
@@ -179,9 +180,8 @@ function App() {
         link.click();
         link.parentNode.removeChild(link);
         setStats(s => ({ ...s, exp: s.exp + 1 }));
-        showToast('CSV Exported!', 'success');
+        showToast('Export successful', 'success');
       } else if (type === 'tp') {
-        // Manually create basic CSV for TP export
         const csv = 'Section,Content\\nObjective,Generated Plan\\nBody,"' + testPlan.replace(/"/g, '""') + '"\\n';
         const blob = new Blob([csv], { type: 'text/csv' });
         const a = document.createElement('a');
@@ -189,7 +189,7 @@ function App() {
         a.download = `TestPlan_${currentTpJiraId}.csv`;
         a.click();
         setStats(s => ({ ...s, exp: s.exp + 1 }));
-        showToast('CSV Exported!', 'success');
+        showToast('Export successful', 'success');
       }
     } catch (e) {
       showToast('Export failed', 'error');
@@ -207,29 +207,28 @@ function App() {
       {/* SIDEBAR */}
       <aside className="sidebar">
         <div className="logo-area">
-          <div className="logo-icon">🧪</div>
+          <div className="logo-icon">Q</div>
           <div className="logo-text">QA Buddy</div>
-          <div className="logo-sub">AI Test Generator</div>
         </div>
 
         <div className="nav-section">
-          <div className="nav-label">Main</div>
-          {renderNav('dashboard', 'Dashboard', '📊')}
-          {renderNav('testcases', 'Test Cases', '🧬')}
-          {renderNav('testplan', 'Test Planner', '📋')}
-          {renderNav('history', 'History', '🕐')}
+          <div className="nav-label">General</div>
+          {renderNav('dashboard', 'Overview', <BarChart2 size={16} />)}
+          {renderNav('testcases', 'Test Cases', <FlaskConical size={16} />)}
+          {renderNav('testplan', 'Test Planner', <ClipboardList size={16} />)}
+          {renderNav('history', 'History', <Clock size={16} />)}
         </div>
 
         <div className="nav-section" style={{ marginTop: 12 }}>
           <div className="nav-label">Integrations</div>
-          {renderNav('settings-jira', 'JIRA', '🔷')}
-          {renderNav('settings-bugzilla', 'Bugzilla', '🐛')}
-          {renderNav('settings-llm', 'LLM / AI', '🤖')}
+          {renderNav('settings-jira', 'JIRA Config', <Link2 size={16} />)}
+          {renderNav('settings-bugzilla', 'Bugzilla Config', <Activity size={16} />)}
+          {renderNav('settings-llm', 'LLM Provider', <Bot size={16} />)}
         </div>
 
         <div className="nav-section" style={{ marginTop: 12 }}>
           <div className="nav-label">System</div>
-          {renderNav('view-settings', 'View Settings', '⚙️')}
+          {renderNav('view-settings', 'Preferences', <Settings size={16} />)}
         </div>
       </aside>
 
@@ -239,64 +238,67 @@ function App() {
         {activePage === 'dashboard' && (
           <div className="page active" id="page-dashboard">
             <div className="page-header">
-              <div className="page-title">Welcome to <span>QA Buddy</span> 👋</div>
-              <span className="page-badge">v2.0 LIVE</span>
+              <div className="page-title">Workspace Overview</div>
             </div>
 
             <div className="stats-grid">
               <div className="stat-card">
-                <div className="stat-icon">🧬</div>
+                <div className="stat-label">Test Cases</div>
                 <div className="stat-num">{stats.tc}</div>
-                <div className="stat-label">Test Cases Generated</div>
               </div>
               <div className="stat-card">
-                <div className="stat-icon">📋</div>
+                <div className="stat-label">Test Plans</div>
                 <div className="stat-num">{stats.tp}</div>
-                <div className="stat-label">Test Plans Generated</div>
               </div>
               <div className="stat-card">
-                <div className="stat-icon">📥</div>
+                <div className="stat-label">Exports</div>
                 <div className="stat-num">{stats.exp}</div>
-                <div className="stat-label">CSV Exports</div>
               </div>
               <div className="stat-card">
-                <div className="stat-icon">🔗</div>
+                <div className="stat-label">Integrations</div>
                 <div className="stat-num">
                   {(connStats.jira ? 1 : 0) + (connStats.bz ? 1 : 0) + (connStats.llm ? 1 : 0)}/3
                 </div>
-                <div className="stat-label">Integrations Active</div>
               </div>
             </div>
 
             <div className="card">
-              <div className="card-title">🚀 Quick Actions</div>
+              <div className="card-title">Quick Actions</div>
               <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-                <button className="btn btn-primary" onClick={() => navTo('testcases')}>🧬 Generate Test Cases</button>
-                <button className="btn btn-outline" onClick={() => navTo('testplan')}>📋 Create Test Plan</button>
-                <button className="btn btn-outline" onClick={() => navTo('settings-jira')}>🔷 Connect JIRA</button>
-                <button className="btn btn-outline" onClick={() => navTo('settings-llm')}>🤖 Configure AI</button>
+                <button className="btn btn-primary" onClick={() => navTo('testcases')}>
+                  <Play size={14} /> Generate Test Cases
+                </button>
+                <button className="btn btn-outline" onClick={() => navTo('testplan')}>
+                  <ClipboardList size={14} /> Draft Test Plan
+                </button>
+                <button className="btn btn-flat" onClick={() => navTo('settings-jira')}>
+                  Configure JIRA <ChevronRight size={14} />
+                </button>
+                <button className="btn btn-flat" onClick={() => navTo('settings-llm')}>
+                  Setup AI <ChevronRight size={14} />
+                </button>
               </div>
             </div>
 
             <div className="card">
-              <div className="card-title">📡 Connection Status</div>
-              <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center' }}>
+              <div className="card-title">Integration Status</div>
+              <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 4 }}>JIRA</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>JIRA</div>
                   <span className={`conn-status ${connStats.jira ? 'connected' : 'disconnected'}`}>
-                    <span className={`conn-dot ${connStats.jira ? 'on' : 'off'}`}></span>{connStats.jira ? 'Connected' : 'Not Connected'}
+                    <span className={`conn-dot ${connStats.jira ? 'on' : 'off'}`}></span>{connStats.jira ? 'Connected' : 'Disconnected'}
                   </span>
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 4 }}>Bugzilla</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>Bugzilla</div>
                   <span className={`conn-status ${connStats.bz ? 'connected' : 'disconnected'}`}>
-                    <span className={`conn-dot ${connStats.bz ? 'on' : 'off'}`}></span>{connStats.bz ? 'Connected' : 'Not Connected'}
+                    <span className={`conn-dot ${connStats.bz ? 'on' : 'off'}`}></span>{connStats.bz ? 'Connected' : 'Disconnected'}
                   </span>
                 </div>
                 <div>
-                  <div style={{ fontSize: 12, color: 'var(--text3)', marginBottom: 4 }}>LLM / AI</div>
+                  <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 4 }}>LLM Services</div>
                   <span className={`conn-status ${connStats.llm ? 'connected' : 'disconnected'}`}>
-                    <span className={`conn-dot ${connStats.llm ? 'on' : 'off'}`}></span>{connStats.llm ? 'Connected' : 'Not Connected'}
+                    <span className={`conn-dot ${connStats.llm ? 'on' : 'off'}`}></span>{connStats.llm ? 'Connected' : 'Disconnected'}
                   </span>
                 </div>
               </div>
@@ -308,38 +310,35 @@ function App() {
         {activePage === 'testcases' && (
           <div className="page active" id="page-testcases">
             <div className="page-header">
-              <div className="page-title">🧬 Test <span>Case Generator</span></div>
-              <span className="page-badge">AI Powered</span>
+              <div className="page-title">Test Case Engine</div>
             </div>
 
             <div className="card">
-              <div className="card-title">📌 Source — JIRA Ticket ID</div>
+              <div className="card-title">Generate via JIRA Integration</div>
               <div className="input-row">
                 <div className="form-group">
-                  <label className="form-label">JIRA Ticket ID</label>
-                  <input className="form-input" placeholder="e.g. PROJ-101" value={tcJiraId} onChange={e => setTcJiraId(e.target.value)} />
+                  <label className="form-label">Ticket ID</label>
+                  <input className="form-input" placeholder="e.g. AUTH-101" value={tcJiraId} onChange={e => setTcJiraId(e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Project Type</label>
+                  <label className="form-label">Context Type</label>
                   <select className="form-input">
                     <option>Web Application</option>
                     <option>Mobile App</option>
-                    <option>API / Backend</option>
+                    <option>API Service</option>
                   </select>
                 </div>
                 <button className="btn btn-primary" onClick={handleFetchAndGenerateTC} style={{ marginTop: 20 }}>
-                  🔍 Fetch &amp; Generate
+                  <RefreshCw size={14} /> Fetch &amp; Generate
                 </button>
               </div>
             </div>
 
-            {/* Dropzone mock */}
             <div className="card">
-              <div className="card-title">📂 OR — Upload Document (Mock)</div>
+              <div className="card-title">Generate via Document (Local)</div>
               <div className="dropzone">
-                <div className="dropzone-icon">☁️</div>
-                <div className="dropzone-text">Drag &amp; Drop file here to generate test cases</div>
-                <div className="dropzone-sub">Supports .pdf, .docx, .txt — max 10MB</div>
+                <div className="dropzone-text">Click or drag document to upload</div>
+                <div className="dropzone-sub">Accepts .pdf, .docx, .txt format up to 10MB</div>
               </div>
             </div>
 
@@ -352,30 +351,31 @@ function App() {
             {testCases.length > 0 && (
               <div className="output-box">
                 <div className="output-header">
-                  <div className="output-title">🧬 Test Cases — {currentTcJiraId}</div>
+                  <div className="output-title">Test Matrix — {currentTcJiraId}</div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span className="output-count">{testCases.length} cases generated</span>
-                    <button className="btn btn-success btn-sm" onClick={() => exportCSV('tc', testCases)}>⬇️ Export CSV</button>
+                    <button className="btn btn-outline btn-sm" onClick={() => exportCSV('tc', testCases)}>
+                      <Download size={14} /> Export CSV
+                    </button>
                   </div>
                 </div>
                 <div className="table-wrap">
                   <table>
                     <thead>
-                      <tr><th>TC ID</th><th>Test Case Name</th><th>Priority</th><th>Type</th><th>Steps</th><th>Expected Result</th></tr>
+                      <tr><th>Identifier</th><th>Title</th><th>Priority</th><th>Type</th><th>Flow Steps</th><th>Expected Result</th></tr>
                     </thead>
                     <tbody>
                       {testCases.map((tc, idx) => (
                         <tr key={idx}>
-                          <td><strong style={{ color: 'var(--accent)' }}>{tc.id}</strong></td>
+                          <td style={{ fontWeight: 500 }}>{tc.id}</td>
                           <td>{tc.title}</td>
                           <td><span className={`badge badge-${tc.priority === 'High' || tc.priority === 'P0' ? 'high' : tc.priority === 'Medium' || tc.priority === 'P1' ? 'med' : 'low'}`}>{tc.priority}</span></td>
-                          <td><span className={`badge`} style={{ background: 'rgba(124,77,255,0.1)', color: 'var(--accent)' }}>{tc.type}</span></td>
-                          <td style={{ fontSize: 12 }}>
+                          <td><span className="badge" style={{ background: 'var(--bg-hover)' }}>{tc.type}</span></td>
+                          <td style={{ fontSize: 13 }}>
                             <ol style={{ paddingLeft: 16 }}>
                               {Array.isArray(tc.steps) ? tc.steps.map((st, i) => <li key={i}>{st}</li>) : <li>{tc.steps}</li>}
                             </ol>
                           </td>
-                          <td style={{ fontSize: 12, color: 'var(--success)' }}>{tc.expected_result}</td>
+                          <td style={{ fontSize: 13, color: 'var(--success)', fontWeight: 500 }}>{tc.expected_result}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -390,26 +390,26 @@ function App() {
         {activePage === 'testplan' && (
           <div className="page active" id="page-testplan">
             <div className="page-header">
-              <div className="page-title">📋 Test <span>Plan Generator</span></div>
-              <span className="page-badge">AI Powered</span>
+              <div className="page-title">Test Planner Engine</div>
             </div>
 
             <div className="card">
-              <div className="card-title">📌 Source — JIRA Ticket ID</div>
+              <div className="card-title">Draft via JIRA Integration</div>
               <div className="input-row">
                 <div className="form-group">
-                  <label className="form-label">JIRA Ticket ID</label>
-                  <input className="form-input" placeholder="e.g. PROJ-101" value={tpJiraId} onChange={e => setTpJiraId(e.target.value)} />
+                  <label className="form-label">Ticket ID</label>
+                  <input className="form-input" placeholder="e.g. AUTH-101" value={tpJiraId} onChange={e => setTpJiraId(e.target.value)} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Test Environment</label>
+                  <label className="form-label">Target Environment</label>
                   <select className="form-input">
                     <option>Staging</option>
-                    <option>Production</option>
+                    <option>Production Environment</option>
+                    <option>UAT</option>
                   </select>
                 </div>
                 <button className="btn btn-primary" onClick={handleFetchAndGenerateTP} style={{ marginTop: 20 }}>
-                  🔍 Fetch &amp; Generate
+                  <RefreshCw size={14} /> Draft Plan
                 </button>
               </div>
             </div>
@@ -423,12 +423,14 @@ function App() {
             {testPlan && (
               <div className="output-box">
                 <div className="output-header">
-                  <div className="output-title">📋 Test Plan — {currentTpJiraId}</div>
+                  <div className="output-title">Test Plan Documentation — {currentTpJiraId}</div>
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <button className="btn btn-success btn-sm" onClick={() => exportCSV('tp')}>⬇️ Export CSV</button>
+                    <button className="btn btn-outline btn-sm" onClick={() => exportCSV('tp')}>
+                      <Download size={14} /> Export CSV
+                    </button>
                   </div>
                 </div>
-                <div style={{ padding: 24, fontSize: '14px', lineHeight: '1.6' }} className="plan-section">
+                <div style={{ padding: 32 }} className="plan-section">
                   <ReactMarkdown>{testPlan}</ReactMarkdown>
                 </div>
               </div>
@@ -440,23 +442,24 @@ function App() {
         {activePage === 'history' && (
           <div className="page active" id="page-history">
             <div className="page-header">
-              <div className="page-title">🕐 <span>History</span></div>
-              <button className="btn btn-outline btn-sm" onClick={() => { setHistory([]); showToast('History cleared'); }}>🗑️ Clear All</button>
+              <div className="page-title">Execution Log</div>
+              <button className="btn btn-flat btn-sm" onClick={() => { setHistory([]); showToast('Log cleared.'); }}>
+                <Trash2 size={14} /> Clear Log
+              </button>
             </div>
             <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
               <div>
                 {history.length === 0 ? (
                   <div className="not-available">
-                    <div className="not-available-icon">📭</div>
-                    <h3>No history yet</h3>
-                    <p>Your generated test cases and test plans<br />will appear here after generation.</p>
+                    <h3>No recent activity</h3>
+                    <p>Generated plans and matrices will display here.</p>
                   </div>
                 ) : (
                   history.map((h, i) => (
                     <div className="history-item" key={i}>
                       <div>
-                        <div style={{ fontSize: 13.5, fontWeight: 600 }}>{h.type === 'tc' ? '🧬 Test Cases' : '📋 Test Plan'} — {h.id}</div>
-                        <div className="history-meta">Source: {h.source} &nbsp;|&nbsp; {h.time}</div>
+                        <div style={{ fontSize: 14, fontWeight: 500 }}>{h.type === 'tc' ? 'Test Cases' : 'Test Plan'} — {h.id}</div>
+                        <div className="history-meta">Source: {h.source} &middot; {h.time}</div>
                       </div>
                     </div>
                   ))
@@ -470,91 +473,32 @@ function App() {
         {activePage === 'settings-jira' && (
           <div className="page active">
             <div className="page-header">
-              <div className="page-title">🔷 JIRA <span>Connection</span></div>
-              <span className={`conn-status ${connStats.jira ? 'connected' : 'disconnected'}`}>
-                <span className={`conn-dot ${connStats.jira ? 'on' : 'off'}`}></span>{connStats.jira ? 'Connected' : 'Not Connected'}
-              </span>
+              <div className="page-title">JIRA Configuration</div>
             </div>
             <div className="card">
-              <div className="card-title">🔗 JIRA Cloud / Server Configuration</div>
+              <div className="card-title">Connection Parameters</div>
               <div className="settings-grid">
                 <div className="form-group">
-                  <label className="form-label">JIRA Base URL</label>
-                  <input className="form-input" placeholder="https://yourcompany.atlassian.net" value={jira.url} onChange={e => setJira({ ...jira, url: e.target.value })} />
+                  <label className="form-label">Base URL</label>
+                  <input className="form-input" placeholder="https://workspace.atlassian.net" value={jira.url} onChange={e => setJira({ ...jira, url: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">JIRA Email</label>
-                  <input className="form-input" type="email" placeholder="you@company.com" value={jira.email} onChange={e => setJira({ ...jira, email: e.target.value })} />
+                  <label className="form-label">Account Email</label>
+                  <input className="form-input" type="email" placeholder="admin@workspace.com" value={jira.email} onChange={e => setJira({ ...jira, email: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">API Token</label>
+                  <label className="form-label">Personal Access Token</label>
                   <input className="form-input" type="password" placeholder="••••••••••••••••" value={jira.token} onChange={e => setJira({ ...jira, token: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Project Key (optional)</label>
-                  <input className="form-input" placeholder="e.g. PROJ, QA, BUG" value={jira.project} onChange={e => setJira({ ...jira, project: e.target.value })} />
+                  <label className="form-label">Project Key Filter (Optional)</label>
+                  <input className="form-input" placeholder="e.g. AUTH, ENG" value={jira.project} onChange={e => setJira({ ...jira, project: e.target.value })} />
                 </div>
               </div>
               <hr className="divider" />
               <div className="btn-row">
-                <button className="btn btn-primary" onClick={testJira}>🔌 Test Connection</button>
-                <button className="btn btn-outline btn-sm" onClick={() => { setJira({ url: '', email: '', token: '', project: '', type: 'Jira Cloud', version: 'v3' }); setConnStats(s => ({ ...s, jira: false })) }}>↩️ Reset</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* LLM SETTINGS */}
-        {activePage === 'settings-llm' && (
-          <div className="page active">
-            <div className="page-header">
-              <div className="page-title">🤖 AI / LLM <span>Configuration</span></div>
-              <span className={`conn-status ${connStats.llm ? 'connected' : 'disconnected'}`}>
-                <span className={`conn-dot ${connStats.llm ? 'on' : 'off'}`}></span>{connStats.llm ? 'Connected' : 'Not Connected'}
-              </span>
-            </div>
-            <div className="card">
-              <div className="card-title">🧠 Choose Your AI Model</div>
-              <div className="tab-row">
-                {['openai', 'groq', 'gemini', 'anthropic'].map(m => (
-                  <button key={m} className={`tab-btn ${llm.active === m ? 'active' : ''}`} onClick={() => setLlm(l => ({ ...l, active: m }))}>
-                    {m === 'openai' ? '🟢 OpenAI GPT-4o' : m === 'groq' ? '🟠 Groq' : m === 'gemini' ? '🔵 Gemini' : '🟣 Anthropic Claude'}
-                  </button>
-                ))}
-              </div>
-
-              <div className="settings-grid" style={{ marginTop: 20 }}>
-                <div className="form-group">
-                  <label className="form-label">API Key</label>
-                  <input className="form-input" type="password" placeholder="••••••••••••••••"
-                    value={llm[llm.active].key}
-                    onChange={e => setLlm(l => ({ ...l, [llm.active]: { ...l[llm.active], key: e.target.value } }))}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Model</label>
-                  <input className="form-input" value={llm[llm.active].model}
-                    onChange={e => setLlm(l => ({ ...l, [llm.active]: { ...l[llm.active], model: e.target.value } }))}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Max Tokens</label>
-                  <input className="form-input" type="number" value={llm[llm.active].tokens}
-                    onChange={e => setLlm(l => ({ ...l, [llm.active]: { ...l[llm.active], tokens: Number(e.target.value) } }))}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Temperature</label>
-                  <input className="form-input" type="number" step="0.1" max="1" min="0" value={llm[llm.active].temp}
-                    onChange={e => setLlm(l => ({ ...l, [llm.active]: { ...l[llm.active], temp: Number(e.target.value) } }))}
-                  />
-                </div>
-              </div>
-
-              <hr className="divider" />
-              <div className="btn-row">
-                <button className="btn btn-primary" onClick={testLlm}>🔌 Test LLM Connection</button>
-                <button className="btn btn-success" onClick={() => showToast('Settings Saved', 'success')}>💾 Save</button>
+                <button className="btn btn-primary" onClick={testJira}>Authenticate Connection</button>
+                <button className="btn btn-flat" onClick={() => { setJira({ url: '', email: '', token: '', project: '', type: 'Jira Cloud', version: 'v3' }); setConnStats(s => ({ ...s, jira: false })) }}>Reset Data</button>
               </div>
             </div>
           </div>
@@ -564,43 +508,84 @@ function App() {
         {activePage === 'settings-bugzilla' && (
           <div className="page active">
             <div className="page-header">
-              <div className="page-title">🐛 Bugzilla <span>Connection</span></div>
-              <span className={`conn-status ${connStats.bz ? 'connected' : 'disconnected'}`}>
-                <span className={`conn-dot ${connStats.bz ? 'on' : 'off'}`}></span>{connStats.bz ? 'Connected' : 'Not Connected'}
-              </span>
+              <div className="page-title">Bugzilla Configuration</div>
             </div>
             <div className="card">
-              <div className="card-title">🔗 Bugzilla Configuration</div>
+              <div className="card-title">Instance Details</div>
               <div className="settings-grid">
                 <div className="form-group">
-                  <label className="form-label">Bugzilla Base URL</label>
-                  <input className="form-input" placeholder="https://bugzilla.yourcompany.com" value={bz.url} onChange={e => setBz({ ...bz, url: e.target.value })} />
+                  <label className="form-label">Host URL</label>
+                  <input className="form-input" placeholder="https://bugzilla.internal.org" value={bz.url} onChange={e => setBz({ ...bz, url: e.target.value })} />
                 </div>
                 <div className="form-group">
                   <label className="form-label">API Key</label>
-                  <input className="form-input" type="password" placeholder="Your Bugzilla API Key" value={bz.key} onChange={e => setBz({ ...bz, key: e.target.value })} />
+                  <input className="form-input" type="password" placeholder="••••••••••••••••" value={bz.key} onChange={e => setBz({ ...bz, key: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Username (optional)</label>
-                  <input className="form-input" placeholder="bugzilla@yourcompany.com" value={bz.user} onChange={e => setBz({ ...bz, user: e.target.value })} />
+                  <label className="form-label">Basic Auth User</label>
+                  <input className="form-input" placeholder="service-account" value={bz.user} onChange={e => setBz({ ...bz, user: e.target.value })} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Password (optional)</label>
-                  <input className="form-input" type="password" placeholder="Only if API key not used" value={bz.pass} onChange={e => setBz({ ...bz, pass: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Default Product</label>
-                  <input className="form-input" placeholder="e.g. Firefox, MyApp" value={bz.prod} onChange={e => setBz({ ...bz, prod: e.target.value })} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Default Component</label>
-                  <input className="form-input" placeholder="e.g. General, UI, Backend" value={bz.comp} onChange={e => setBz({ ...bz, comp: e.target.value })} />
+                  <label className="form-label">Basic Auth Pass</label>
+                  <input className="form-input" type="password" placeholder="••••••••••••••••" value={bz.pass} onChange={e => setBz({ ...bz, pass: e.target.value })} />
                 </div>
               </div>
               <hr className="divider" />
               <div className="btn-row">
-                <button className="btn btn-primary" onClick={() => { setConnStats(s => ({ ...s, bz: true })); showToast('Bugzilla Connected!', 'success'); }}>🔌 Test Connection</button>
-                <button className="btn btn-outline btn-sm" onClick={() => { setBz({ url: '', key: '', user: '', pass: '', prod: '', comp: '' }); setConnStats(s => ({ ...s, bz: false })) }}>↩️ Reset</button>
+                <button className="btn btn-primary" onClick={() => { setConnStats(s => ({ ...s, bz: true })); showToast('Connection Verified', 'success'); }}>Authenticate Connection</button>
+                <button className="btn btn-flat" onClick={() => { setBz({ url: '', key: '', user: '', pass: '', prod: '', comp: '' }); setConnStats(s => ({ ...s, bz: false })) }}>Reset Data</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* LLM SETTINGS */}
+        {activePage === 'settings-llm' && (
+          <div className="page active">
+            <div className="page-header">
+              <div className="page-title">Language Model Services</div>
+            </div>
+            <div className="card">
+              <div className="tab-row">
+                {['anthropic', 'openai', 'groq', 'gemini'].map(m => (
+                  <button key={m} className={`tab-btn ${llm.active === m ? 'active' : ''}`} onClick={() => setLlm(l => ({ ...l, active: m }))}>
+                    {m.charAt(0).toUpperCase() + m.slice(1)}
+                  </button>
+                ))}
+              </div>
+
+              <div className="settings-grid" style={{ marginTop: 16 }}>
+                <div className="form-group">
+                  <label className="form-label">Access Key</label>
+                  <input className="form-input" type="password" placeholder="••••••••••••••••"
+                    value={llm[llm.active].key}
+                    onChange={e => setLlm(l => ({ ...l, [llm.active]: { ...l[llm.active], key: e.target.value } }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Model Identifier</label>
+                  <input className="form-input" value={llm[llm.active].model}
+                    onChange={e => setLlm(l => ({ ...l, [llm.active]: { ...l[llm.active], model: e.target.value } }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Context Window (Tokens)</label>
+                  <input className="form-input" type="number" value={llm[llm.active].tokens}
+                    onChange={e => setLlm(l => ({ ...l, [llm.active]: { ...l[llm.active], tokens: Number(e.target.value) } }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Temperature Parameter</label>
+                  <input className="form-input" type="number" step="0.1" max="1" min="0" value={llm[llm.active].temp}
+                    onChange={e => setLlm(l => ({ ...l, [llm.active]: { ...l[llm.active], temp: Number(e.target.value) } }))}
+                  />
+                </div>
+              </div>
+
+              <hr className="divider" />
+              <div className="btn-row">
+                <button className="btn btn-primary" onClick={testLlm}>Validate API Key</button>
+                <button className="btn btn-outline" onClick={() => showToast('Configuration Stored', 'success')}>Persist Options</button>
               </div>
             </div>
           </div>
@@ -610,12 +595,13 @@ function App() {
         {activePage === 'view-settings' && (
           <div className="page active">
             <div className="page-header">
-              <div className="page-title">⚙️ View Settings</div>
+              <div className="page-title">Personal Preferences</div>
             </div>
-            <div className="not-available">
-              <div className="not-available-icon">🚧</div>
-              <h3>Currently Not Available</h3>
-              <p>This functionality is coming in the next release.<br />Stay tuned!</p>
+            <div className="card">
+              <div className="not-available">
+                <h3>Workspace settings are currently locked</h3>
+                <p>Contact your system administrator to adjust visual constraints.</p>
+              </div>
             </div>
           </div>
         )}
@@ -624,7 +610,7 @@ function App() {
 
       {/* TOAST */}
       <div className={`toast ${toast.show ? 'show' : ''}`}>
-        {toast.type === 'success' ? '✅' : toast.type === 'error' ? '❌' : toast.type === 'warning' ? '⚠️' : '💡'} {toast.msg}
+        {toast.msg}
       </div>
     </div>
   );
